@@ -1,41 +1,35 @@
 name: Reminder 21
 
 on:
-  schedule:
-    # Alle 15 Minuten, ausser von 1 bis 8 Uhr deutscher Zeit (also nur in den
-    # Stunden 0 und 8-23). Die Zeitzone sorgt dafuer, dass das auch nach der
-    # Sommer-/Winterzeit-Umstellung stimmt. Minuten 7/22/37/52 statt
-    # 0/15/30/45, weil GitHub geplante Laeufe laut Doku besonders zur vollen
-    # Stunde verzoegert oder ganz verwirft.
-    - cron: "7,22,37,52 0,8-23 * * *"
-      timezone: "Europe/Berlin"
-  workflow_dispatch:  # manueller Testlauf (Actions-Tab -> "Run workflow")
-
-permissions:
-  actions: write  # fuer den Keepalive-Schritt unten
+  workflow_dispatch:
+    # Wird alle 15 Minuten extern per cron-job.org ueber die GitHub-REST-API
+    # ausgeloest. GitHubs eigener schedule-Trigger kam in der Praxis zu spaet
+    # oder gar nicht (wie schon bei kaufland-dashboard). Manuelle Testlaeufe
+    # gehen ebenfalls hierueber (Actions-Tab -> "Run workflow").
 
 jobs:
   remind:
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
-      - name: Erinnerung per ntfy senden
+      - name: Erinnerung per ntfy senden (ausser 1-8 Uhr Berlin)
         env:
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
         run: |
+          # Pause von 1 bis 8 Uhr deutscher Zeit (Sommer-/Winterzeit automatisch).
+          # cron-job.org darf rund um die Uhr ausloesen - das Repo ist
+          # oeffentlich, Laeufe kosten keine Actions-Minuten.
+          jetzt=$(TZ=Europe/Berlin date '+%d.%m.%Y %H:%M')
+          stunde=$(TZ=Europe/Berlin date '+%-H')
+          if [ "$stunde" -ge 1 ] && [ "$stunde" -lt 8 ]; then
+            echo "Ruhezeit ($jetzt Berlin) - keine Erinnerung."
+            exit 0
+          fi
+
           # Priority urgent = mit Ton und Vibration auf dem iPhone
           curl -fsS --retry 3 -o /dev/null \
             -H "Title: 21" \
             -H "Priority: urgent" \
             -d "Erinnerung" \
             "https://ntfy.sh/$NTFY_TOPIC"
-          echo "Erinnerung gesendet ($(TZ=Europe/Berlin date '+%d.%m.%Y %H:%M') Berlin)"
-
-      # Oeffentliches Repo: GitHub deaktiviert geplante Workflows nach 60 Tagen
-      # ohne Repo-Aktivitaet. Das Wieder-Aktivieren per API verhindert das,
-      # ohne Dummy-Commits.
-      - name: Keepalive (Workflow aktiv halten)
-        continue-on-error: true
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh api -X PUT "repos/$GITHUB_REPOSITORY/actions/workflows/reminder.yml/enable"
+          echo "Erinnerung gesendet ($jetzt Berlin)"
