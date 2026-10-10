@@ -1,0 +1,29 @@
+name: Reminder 21
+
+on:
+  schedule:
+    # Alle 15 Minuten, ausser von 1 bis 8 Uhr deutscher Zeit (also nur in den
+    # Stunden 0 und 8-23). Die Zeitzone sorgt dafuer, dass das auch nach der
+    # Sommer-/Winterzeit-Umstellung stimmt. Minuten 7/22/37/52 statt
+    # 0/15/30/45, weil GitHub geplante Laeufe laut Doku besonders zur vollen
+    # Stunde verzoegert oder ganz verwirft.
+    - cron: "7,22,37,52 0,8-23 * * *"
+      timezone: "Europe/Berlin"
+  workflow_dispatch:  # manueller Testlauf (Actions-Tab -> "Run workflow")
+
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Erinnerung per ntfy senden
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+        run: |
+          # Priority urgent = mit Ton und Vibration auf dem iPhone
+          curl -fsS --retry 3 -o /dev/null \
+            -H "Title: 21" \
+            -H "Priority: urgent" \
+            -d "Erinnerung" \
+            "https://ntfy.sh/$NTFY_TOPIC"
+          echo "Erinnerung gesendet ($(TZ=Europe/Berlin date '+%d.%m.%Y %H:%M') Berlin)"
