@@ -11,6 +11,9 @@ on:
       timezone: "Europe/Berlin"
   workflow_dispatch:  # manueller Testlauf (Actions-Tab -> "Run workflow")
 
+permissions:
+  actions: write  # fuer den Keepalive-Schritt unten
+
 jobs:
   remind:
     runs-on: ubuntu-latest
@@ -27,3 +30,12 @@ jobs:
             -d "Erinnerung" \
             "https://ntfy.sh/$NTFY_TOPIC"
           echo "Erinnerung gesendet ($(TZ=Europe/Berlin date '+%d.%m.%Y %H:%M') Berlin)"
+
+      # Oeffentliches Repo: GitHub deaktiviert geplante Workflows nach 60 Tagen
+      # ohne Repo-Aktivitaet. Das Wieder-Aktivieren per API verhindert das,
+      # ohne Dummy-Commits.
+      - name: Keepalive (Workflow aktiv halten)
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api -X PUT "repos/$GITHUB_REPOSITORY/actions/workflows/reminder.yml/enable"

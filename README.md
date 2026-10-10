@@ -6,4 +6,4 @@ Schickt alle 15 Minuten eine laute ntfy-Benachrichtigung mit dem Titel **21** au
 - Das ntfy-Topic liegt als Repo-Secret `NTFY_TOPIC` vor, nicht im Code.
 - Pausieren: Actions-Tab → „Reminder 21“ → „…“ → „Disable workflow“.
 
-Jeder Lauf kostet eine GitHub-Actions-Minute (privates Repo): 68 Läufe pro Tag ≈ 2.100 Minuten im Monat.
+Das Repo ist öffentlich, deshalb kosten die Läufe keine GitHub-Actions-Minuten. Damit GitHub den Zeitplan nicht nach 60 Tagen ohne Aktivität abschaltet, aktiviert sich der Workflow bei jedem Lauf selbst neu (Keepalive-Schritt).
